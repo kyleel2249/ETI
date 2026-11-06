@@ -9,10 +9,12 @@ from .models import TraderProfile, MarketSnapshot, DecisionRecord, JournalEntry
 from .schemas import SnapshotIn, JournalIn
 from .seed import seed_traders
 from .engine import assess_market, calculate_position_size
+from .integrations.router import router as providers_router
 
 Base.metadata.create_all(bind=engine)
-app = FastAPI(title="Elite Trading Intelligence", version="0.1.0",
-              description="Safety-first market research and decision-support foundation. Live execution is not implemented.")
+app = FastAPI(title="Elite Trading Intelligence", version="0.2.0",
+              description="Safety-first multi-provider market research and paper-trading foundation. Live execution is disabled.")
+app.include_router(providers_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
@@ -23,14 +25,15 @@ def startup():
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
-    return templates.TemplateResponse("index.html", {
+    context = {
         "request": request,
         "trader_count": db.query(TraderProfile).count(),
         "snapshot_count": db.query(MarketSnapshot).count(),
         "decision_count": db.query(DecisionRecord).count(),
         "journal_count": db.query(JournalEntry).count(),
-        "live_enabled": False
-    })
+        "live_enabled": False,
+    }
+    return templates.TemplateResponse(request=request, name="index.html", context=context)
 
 @app.get("/health")
 def health():
@@ -48,6 +51,8 @@ def create_snapshot(payload: SnapshotIn, db: Session = Depends(get_db)):
     observed = payload.observed_at
     if observed.tzinfo is None:
         observed = observed.replace(tzinfo=timezone.utc)
+    else:
+        observed = observed.astimezone(timezone.utc)
     row = MarketSnapshot(symbol=payload.symbol.upper(), price=payload.price,
         observed_at=observed, source=payload.source, bid=payload.bid,
         ask=payload.ask, timeframe=payload.timeframe)
@@ -103,8 +108,8 @@ def decisions(db: Session = Depends(get_db)):
 
 @app.get("/api/system")
 def system_status():
-    return {"application": "ETI", "version": "0.1.0",
+    return {"application": "ETI", "version": "0.2.0",
             "mode": "research_and_paper_foundation",
             "live_trading_enabled": False,
-            "market_data": "user/provider-supplied snapshots only; no live feed configured",
+            "market_data": "Alpaca and Binance provider adapters available; credentials and entitlements determine connectivity",
             "status": "operational"}

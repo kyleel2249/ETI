@@ -1,80 +1,82 @@
 # Elite Trading Intelligence (ETI)
 
-A safety-first, deployable foundation for an AI-assisted trading research and decision-support platform.
+A safety-first, multi-asset market research, analysis and paper-trading foundation.
 
 ## Current implementation
-- FastAPI web application with a responsive command-centre dashboard.
-- Persistent SQLite storage for trader profiles, market snapshots, decisions and trade journal entries.
-- Curated elite-trader methodology library. Documented facts are separated from inferred strategy interpretations.
-- Market-readiness engine that can return `STRONG_TRADE_CONDITIONS`, `TRADEABLE_WITH_CAUTION`, `WAIT_FOR_CONFIRMATION`, `NO_TRADE`, or `INSUFFICIENT_DATA`.
-- Explicit stale/missing-data rejection. The app does not invent live prices or technical indicators.
-- Risk sizing calculator and portfolio risk guardrails.
-- Paper-trading journal endpoints.
-- Live execution is deliberately disabled; no broker credentials or order-routing code are included in this starter.
+
+- FastAPI application and responsive command-centre dashboard.
+- Persistent SQLite storage for trader profiles, market snapshots, decisions and paper journal entries.
+- Publicly documented trader-methodology seed library.
+- Conservative market-readiness and position-sizing functions.
+- **Alpaca adapter:** paper-account status, historical stock bars and opt-in paper market orders.
+- **Binance adapter:** public Spot ping, exchange information, 24-hour ticker, klines and order-book snapshots; optional read-only Spot Test Network account access and separately gated testnet market orders.
+- Provider credentials loaded from environment variables / local .env; no credentials are stored in source code.
+- Live trading is hard-disabled in this release.
+
+Provider functionality depends on credentials, account eligibility, market-data entitlements and network availability. A configured key is not proof of a successful authenticated connection. The provider status endpoint distinguishes configuration from verified account connectivity.
 
 ## Quick start (Python 3.11+)
-```bash
-python -m venv .venv
-# Windows:
-.venv\\Scripts\\activate
-# macOS/Linux:
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs
 
-## Docker
-```bash
-docker compose up --build
-```
+    python -m venv .venv
+    # Windows: .venv\Scripts\activate
+    # macOS/Linux: source .venv/bin/activate
+    python -m pip install -r requirements.txt
+    uvicorn app.main:app --reload
+
+Open http://127.0.0.1:8000 and API docs at http://127.0.0.1:8000/docs.
+
+## Provider configuration
+
+Copy .env.example to .env in the project root. Add your own credentials locally; never paste keys into source code, chat, screenshots or GitHub.
+
+### Alpaca
+
+1. Create an Alpaca account and verify eligibility for your country and the services you intend to use.
+2. Generate paper-trading credentials in the Alpaca dashboard.
+3. Set ALPACA_API_KEY, ALPACA_SECRET_KEY, and keep ALPACA_PAPER=true.
+4. The default feed is iex; access to other feeds depends on your Alpaca subscription.
+5. Account status: GET /api/providers/alpaca/status?check_account=true.
+6. Account details: GET /api/providers/alpaca/account.
+7. Historical stock bars: GET /api/providers/alpaca/stocks/AAPL?timeframe=1Hour&limit=100.
+
+Paper order routing is disabled by default. Only after validating your setup, set ALPACA_PAPER_ORDER_ROUTING_ENABLED=true locally and use POST /api/providers/alpaca/paper-orders with JSON containing symbol AAPL, side BUY and quantity 1. This route is paper-only and must not be exposed publicly without authentication and authorization.
+
+### Binance
+
+Public market-data endpoints require no API key:
+
+- GET /api/providers/binance/status
+- GET /api/providers/binance/exchange-info?symbol=BTCUSDT
+- GET /api/providers/binance/ticker/BTCUSDT
+- GET /api/providers/binance/klines?symbol=BTCUSDT&interval=1h&limit=100
+- GET /api/providers/binance/order-book?symbol=BTCUSDT&limit=100
+
+For private account testing, create a restricted Spot Test Network key at https://testnet.binance.vision/, set BINANCE_TESTNET_ENABLED=true, and configure BINANCE_API_KEY and BINANCE_SECRET_KEY. Testnet account access is GET /api/providers/binance/account.
+
+Binance testnet order routing is separately disabled by default. To explicitly enable it in a local test environment, set BINANCE_TESTNET_ORDER_ROUTING_ENABLED=true and call POST /api/providers/binance/testnet-orders. Never use production trading permissions. Withdrawal permissions must remain disabled.
+
+## Provider routes
+
+See /docs for the complete OpenAPI contract. GET /api/providers/status provides provider configuration/connectivity status. Binance public status performs a public ping. Alpaca status only performs an authenticated account check when check_account=true.
+
+## Safety and deployment
+
+- LIVE_TRADING_ENABLED is hard-disabled in code; changing the environment variable cannot enable live execution.
+- Alpaca order routing, even in paper mode, is separately opt-in and should only be enabled locally until authenticated access controls are implemented.
+- Binance private access is restricted to the Spot Test Network in this release. Authenticated calls use the testnet host only.
+- No withdrawals or production Binance orders are implemented.
+- Do not expose private order routes to the public internet without user authentication, authorization, CSRF protections where applicable, audit logging and rate limits.
+- Provider data is venue-specific. BTCUSDT is not automatically interchangeable with BTC/USD. Quote currency, venue and source timestamps must be preserved.
+- The current adapters are REST-based. They do not claim persistent real-time WebSocket streaming. WebSocket streaming, full candle-history persistence, portfolio reconciliation, and advanced forecasting/backtesting remain follow-on work.
+- Market data can be delayed, incomplete or unavailable. Never present cached data as live or forecasts as guaranteed.
 
 ## Tests
-```bash
-PYTHONPATH=. python -m pytest -q
-```
 
-## Data integrity and safety
-- A market snapshot must include a source, timestamp, price and instrument.
-- Snapshots older than the configured freshness window are rejected for tradeable verdicts.
-- Signals are decision-support, not guarantees or personalised investment advice.
-- `LIVE_TRADING_ENABLED` is hard-disabled in this release. Do not enable live trading by simply changing an environment variable; a separately reviewed broker adapter, permissions model, reconciliation, kill switch and end-to-end tests are required.
-- Never put API keys, broker passwords, exchange secrets or wallet seed phrases in source control.
+    PYTHONPATH=. python -m pytest -q
+    python -m compileall -q app tests
 
-## Deployment
-The included Dockerfile and `render.yaml` provide a straightforward deployment path on a container host. Configure a persistent disk for `/data` and set `DATABASE_URL=sqlite:////data/eti.db`, or use a managed PostgreSQL service and a compatible SQLAlchemy URL.
+Tests use mocks and do not require API secrets or provider availability.
 
-## Planned integration boundary
-Implement provider adapters only after choosing and validating licensed market-data sources. Provider interfaces must report source, timestamp, instrument, quote currency, bid/ask and data quality. Do not label delayed or cached prices as live.
+## Predictive intelligence
 
-## Project identity and safety
-
-This project is **ETI — Elite Trading Intelligence**. It is a research, decision-support, and paper-trading foundation. It does not promise profits or loss-free trading. Market signals require verified, sufficiently fresh market data; missing or stale data must result in no trade. Live brokerage execution is intentionally disabled in this foundation.
-
-## Continuous integration
-
-GitHub Actions runs Python compilation and the automated test suite on pushes and pull requests targeting `main`.
-
-## Predictive intelligence — core product requirement
-
-ETI's target capability is a multi-asset, probabilistic forecasting and trade-planning engine. It must analyse supported cryptoassets/tokens, equities, forex, precious metals (including gold and silver), indices and other instruments for multiple forecast horizons.
-
-For each instrument and horizon, the engine should estimate:
-- The most likely buy/entry and sell/exit windows, with dates and timestamps (UTC plus Africa/Accra/GMT display).
-- Forecast price paths as ordered timestamp/price sequences, not just a single target.
-- Expected price ranges and calibrated prediction intervals, including plausible downside/upside scenarios.
-- Potential support/resistance zones and conditional local-high/local-low windows, with probability and uncertainty; never label a forecast turning point as a guaranteed exact high or low.
-- Expected entry zone, invalidation level, stop, targets, transaction costs, liquidity and risk/reward.
-- A clear BUY / SELL / WAIT / NO-TRADE recommendation, rationale, model version, data timestamp, forecast horizon and confidence/calibration metadata.
-
-Forecasts must use validated historical and current data, with suitable OHLCV, volatility, liquidity, spreads, macroeconomic, fundamental, market-structure and timestamped news/sentiment inputs where licensed and available. Every input must carry provenance, timestamp, market, currency and quality metadata. Missing, stale, manipulated, inconsistent or insufficient data must reduce confidence or force abstention.
-
-Model governance is mandatory: use chronological splits, walk-forward and strictly out-of-sample tests; prevent look-ahead, survivorship, leakage and delisted-asset bias; simulate realistic fees, spread, slippage, funding, borrow costs, latency, liquidity and execution constraints; compare with simple baselines; report forecast error, directional accuracy, interval coverage, calibration, drawdown, expectancy and risk-adjusted returns by asset, horizon and market regime. Detect drift and strategy decay, and retain immutable forecast snapshots for later scoring.
-
-Forecasts must show distributions, ranges and alternative scenarios—not false precision. A forecast is not a trade instruction by itself: the independent risk engine must approve each proposed trade and may veto it. Start in research and paper-trading mode. Automated live execution remains disabled until separately reviewed, explicitly opted-in, broker-specific controls, reconciliation, a kill switch, audit trail and extensive validation are implemented.
-
-See [docs/PREDICTIVE_INTELLIGENCE.md](docs/PREDICTIVE_INTELLIGENCE.md) for the detailed functional and acceptance specification.
-
-## Current implementation boundary
-
-The current release is a foundation: dashboard, trader-methodology seed library, conservative market-readiness checks, risk sizing, paper journal, and container deployment files. The predictive forecasting engine described above is a required future capability, not yet implemented or validated. Real-time market-data integrations, advanced backtesting, portfolio optimization, multi-agent council orchestration, and live brokerage execution are also not represented as completed features.
+See docs/PREDICTIVE_INTELLIGENCE.md. Forecasting remains a required future capability, not a validated production forecasting engine.
