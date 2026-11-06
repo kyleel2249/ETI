@@ -1,0 +1,13 @@
+services:
+  eti:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////data/eti.db
+      DATA_MAX_AGE_SECONDS: "300"
+      LIVE_TRADING_ENABLED: "false"
+    volumes:
+      - eti_data:/data
+volumes:
+  eti_data:
