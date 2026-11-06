@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: eti
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    disk:
+      name: eti-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:////data/eti.db
+      - key: DATA_MAX_AGE_SECONDS
+        value: "300"
+      - key: LIVE_TRADING_ENABLED
+        value: "false"
