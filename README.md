@@ -55,6 +55,26 @@ This project is **ETI — Elite Trading Intelligence**. It is a research, decisi
 
 GitHub Actions runs Python compilation and the automated test suite on pushes and pull requests targeting `main`.
 
+## Predictive intelligence — core product requirement
+
+ETI's target capability is a multi-asset, probabilistic forecasting and trade-planning engine. It must analyse supported cryptoassets/tokens, equities, forex, precious metals (including gold and silver), indices and other instruments for multiple forecast horizons.
+
+For each instrument and horizon, the engine should estimate:
+- The most likely buy/entry and sell/exit windows, with dates and timestamps (UTC plus Africa/Accra/GMT display).
+- Forecast price paths as ordered timestamp/price sequences, not just a single target.
+- Expected price ranges and calibrated prediction intervals, including plausible downside/upside scenarios.
+- Potential support/resistance zones and conditional local-high/local-low windows, with probability and uncertainty; never label a forecast turning point as a guaranteed exact high or low.
+- Expected entry zone, invalidation level, stop, targets, transaction costs, liquidity and risk/reward.
+- A clear BUY / SELL / WAIT / NO-TRADE recommendation, rationale, model version, data timestamp, forecast horizon and confidence/calibration metadata.
+
+Forecasts must use validated historical and current data, with suitable OHLCV, volatility, liquidity, spreads, macroeconomic, fundamental, market-structure and timestamped news/sentiment inputs where licensed and available. Every input must carry provenance, timestamp, market, currency and quality metadata. Missing, stale, manipulated, inconsistent or insufficient data must reduce confidence or force abstention.
+
+Model governance is mandatory: use chronological splits, walk-forward and strictly out-of-sample tests; prevent look-ahead, survivorship, leakage and delisted-asset bias; simulate realistic fees, spread, slippage, funding, borrow costs, latency, liquidity and execution constraints; compare with simple baselines; report forecast error, directional accuracy, interval coverage, calibration, drawdown, expectancy and risk-adjusted returns by asset, horizon and market regime. Detect drift and strategy decay, and retain immutable forecast snapshots for later scoring.
+
+Forecasts must show distributions, ranges and alternative scenarios—not false precision. A forecast is not a trade instruction by itself: the independent risk engine must approve each proposed trade and may veto it. Start in research and paper-trading mode. Automated live execution remains disabled until separately reviewed, explicitly opted-in, broker-specific controls, reconciliation, a kill switch, audit trail and extensive validation are implemented.
+
+See [docs/PREDICTIVE_INTELLIGENCE.md](docs/PREDICTIVE_INTELLIGENCE.md) for the detailed functional and acceptance specification.
+
 ## Current implementation boundary
 
-This initial release includes the dashboard, persistence models, trader-methodology seed library, conservative market-readiness checks, risk sizing, paper journal, and container deployment files. Real-time market-data integrations, advanced backtesting, portfolio optimization, multi-agent council orchestration, and live brokerage execution are not represented as completed features.
+The current release is a foundation: dashboard, trader-methodology seed library, conservative market-readiness checks, risk sizing, paper journal, and container deployment files. The predictive forecasting engine described above is a required future capability, not yet implemented or validated. Real-time market-data integrations, advanced backtesting, portfolio optimization, multi-agent council orchestration, and live brokerage execution are also not represented as completed features.
